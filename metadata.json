@@ -1,0 +1,6 @@
+{
+  "name": "AurumPOS — Sistem Kasir & Manajemen Toko Emas",
+  "description": "Aplikasi jual beli emas toko fisik dengan cek harga real-time, stok multi-cabang, laporan laba rugi otomatis, notifikasi pelanggan, cetak nota Bluetooth, dan integrasi timbangan digital.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

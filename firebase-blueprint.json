@@ -1,0 +1,655 @@
+{
+  "entities": {
+    "StoreSetting": {
+      "title": "StoreSetting",
+      "description": "Global gold pricing margins and store identity settings for an authenticated store owner.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "UID of the store owner."
+        },
+        "storeName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "Display name of the gold store chain."
+        },
+        "npwpStore": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 32,
+          "description": "Official NPWP tax ID of the business."
+        },
+        "sellMarginPercent": {
+          "type": "number",
+          "description": "Retail selling margin percentage above base karat spot price (0 to 50)."
+        },
+        "buybackSpreadPerGram": {
+          "type": "number",
+          "description": "Standard buyback deduction per gram in IDR (0 to 500000)."
+        },
+        "manualSpot24kOverride": {
+          "type": "number",
+          "description": "Optional manual 24K IDR/gram benchmark override; 0 uses live spot feed."
+        },
+        "receiptFooterNote": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 240,
+          "description": "Guarantee note printed at the bottom of gold receipts."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp."
+        }
+      },
+      "required": [
+        "ownerId",
+        "storeName",
+        "npwpStore",
+        "sellMarginPercent",
+        "buybackSpreadPerGram",
+        "manualSpot24kOverride",
+        "receiptFooterNote",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Branch": {
+      "title": "Branch",
+      "description": "Physical gold store branch synced across the multi-branch network.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "UID of the store owner."
+        },
+        "code": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 20,
+          "pattern": "^[A-Z0-9\\-]+$",
+          "description": "Short uppercase branch code."
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "Branch name."
+        },
+        "city": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80,
+          "description": "City of the physical branch."
+        },
+        "address": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 240,
+          "description": "Full street or mall address."
+        },
+        "phone": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 30,
+          "description": "Branch contact telephone number."
+        },
+        "managerName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "Branch head or person-in-charge."
+        },
+        "monthlyOperationalCost": {
+          "type": "number",
+          "description": "Monthly branch operating expenses in IDR for net profit calculation."
+        },
+        "isActive": {
+          "type": "boolean",
+          "description": "Whether the branch is currently active."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp."
+        }
+      },
+      "required": [
+        "ownerId",
+        "code",
+        "name",
+        "city",
+        "address",
+        "phone",
+        "managerName",
+        "monthlyOperationalCost",
+        "isActive",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "InventoryItem": {
+      "title": "InventoryItem",
+      "description": "Individual weighed gold jewelry or bullion bar in a specific branch.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "branchId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "sku": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40,
+          "pattern": "^[A-Z0-9\\-]+$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "category": {
+          "type": "string",
+          "maxLength": 24,
+          "enum": ["cincin", "kalung", "gelang", "anting", "liontin", "logam_mulia", "leburan"]
+        },
+        "karat": {
+          "type": "string",
+          "maxLength": 8,
+          "enum": ["24K", "23K", "22K", "20K", "18K", "17K", "16K", "9K", "8K"]
+        },
+        "purityPercent": {
+          "type": "number"
+        },
+        "weightGrams": {
+          "type": "number"
+        },
+        "costPerGram": {
+          "type": "number"
+        },
+        "makingCharge": {
+          "type": "number"
+        },
+        "status": {
+          "type": "string",
+          "maxLength": 16,
+          "enum": ["available", "sold", "melting"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "ownerId",
+        "branchId",
+        "sku",
+        "name",
+        "category",
+        "karat",
+        "purityPercent",
+        "weightGrams",
+        "costPerGram",
+        "makingCharge",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Customer": {
+      "title": "Customer",
+      "description": "Loyal store customer record isolated strictly to the store owner.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "branchId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "phone": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 30,
+          "pattern": "^[0-9+\\-\\s]+$"
+        },
+        "hasNpwp": {
+          "type": "boolean"
+        },
+        "npwpNumber": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 32
+        },
+        "tier": {
+          "type": "string",
+          "maxLength": 16,
+          "enum": ["reguler", "prioritas", "vip"]
+        },
+        "totalTransactionsCount": {
+          "type": "number"
+        },
+        "totalWeightGrams": {
+          "type": "number"
+        },
+        "loyaltyPoints": {
+          "type": "number"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "ownerId",
+        "branchId",
+        "name",
+        "phone",
+        "hasNpwp",
+        "npwpNumber",
+        "tier",
+        "totalTransactionsCount",
+        "totalWeightGrams",
+        "loyaltyPoints",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "PriceAlert": {
+      "title": "PriceAlert",
+      "description": "Target gold price notification rule for a loyal customer.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "customerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "customerName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "customerPhone": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 30,
+          "pattern": "^[0-9+\\-\\s]+$"
+        },
+        "karat": {
+          "type": "string",
+          "maxLength": 8,
+          "enum": ["24K", "23K", "22K", "20K", "18K", "17K", "16K", "9K", "8K"]
+        },
+        "alertType": {
+          "type": "string",
+          "maxLength": 16,
+          "enum": ["buy_below", "sell_above"]
+        },
+        "targetPricePerGram": {
+          "type": "number"
+        },
+        "status": {
+          "type": "string",
+          "maxLength": 16,
+          "enum": ["active", "notified", "cancelled"]
+        },
+        "notes": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 200
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "ownerId",
+        "customerId",
+        "customerName",
+        "customerPhone",
+        "karat",
+        "alertType",
+        "targetPricePerGram",
+        "status",
+        "notes",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "GoldTransaction": {
+      "title": "GoldTransaction",
+      "description": "Immutable financial transaction record for gold sale or customer buyback.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "branchId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "branchName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "invoiceNumber": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40,
+          "pattern": "^[A-Z0-9\\-]+$"
+        },
+        "txType": {
+          "type": "string",
+          "maxLength": 16,
+          "enum": ["sale", "buyback"]
+        },
+        "customerId": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 128
+        },
+        "customerName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "customerHasNpwp": {
+          "type": "boolean"
+        },
+        "inventoryItemId": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 128
+        },
+        "sku": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40,
+          "pattern": "^[A-Z0-9\\-]+$"
+        },
+        "itemName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "category": {
+          "type": "string",
+          "maxLength": 24,
+          "enum": ["cincin", "kalung", "gelang", "anting", "liontin", "logam_mulia", "leburan"]
+        },
+        "karat": {
+          "type": "string",
+          "maxLength": 8,
+          "enum": ["24K", "23K", "22K", "20K", "18K", "17K", "16K", "9K", "8K"]
+        },
+        "purityPercent": {
+          "type": "number"
+        },
+        "weightGrams": {
+          "type": "number"
+        },
+        "scaleSource": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "pricePerGram": {
+          "type": "number"
+        },
+        "costPerGram": {
+          "type": "number"
+        },
+        "makingCharge": {
+          "type": "number"
+        },
+        "deductionAmount": {
+          "type": "number"
+        },
+        "dppAmount": {
+          "type": "number"
+        },
+        "ppnAmount": {
+          "type": "number"
+        },
+        "pph22Amount": {
+          "type": "number"
+        },
+        "totalAmount": {
+          "type": "number"
+        },
+        "paymentMethod": {
+          "type": "string",
+          "maxLength": 16,
+          "enum": ["tunai", "transfer", "qris", "debit"]
+        },
+        "status": {
+          "type": "string",
+          "maxLength": 16,
+          "enum": ["completed", "voided"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "ownerId",
+        "branchId",
+        "branchName",
+        "invoiceNumber",
+        "txType",
+        "customerId",
+        "customerName",
+        "customerHasNpwp",
+        "inventoryItemId",
+        "sku",
+        "itemName",
+        "category",
+        "karat",
+        "purityPercent",
+        "weightGrams",
+        "scaleSource",
+        "pricePerGram",
+        "costPerGram",
+        "makingCharge",
+        "deductionAmount",
+        "dppAmount",
+        "ppnAmount",
+        "pph22Amount",
+        "totalAmount",
+        "paymentMethod",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "StockTransfer": {
+      "title": "StockTransfer",
+      "description": "Atomic inter-branch gold inventory transfer log.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "inventoryItemId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "sku": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40,
+          "pattern": "^[A-Z0-9\\-]+$"
+        },
+        "itemName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "karat": {
+          "type": "string",
+          "maxLength": 8,
+          "enum": ["24K", "23K", "22K", "20K", "18K", "17K", "16K", "9K", "8K"]
+        },
+        "weightGrams": {
+          "type": "number"
+        },
+        "fromBranchId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "fromBranchName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "toBranchId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "toBranchName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "notes": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 200
+        },
+        "status": {
+          "type": "string",
+          "maxLength": 16,
+          "enum": ["completed"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "ownerId",
+        "inventoryItemId",
+        "sku",
+        "itemName",
+        "karat",
+        "weightGrams",
+        "fromBranchId",
+        "fromBranchName",
+        "toBranchId",
+        "toBranchName",
+        "notes",
+        "status",
+        "createdAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/storeSettings/{ownerId}": {
+      "schema": "StoreSetting",
+      "description": "Per-owner global store pricing configuration."
+    },
+    "/branches/{branchId}": {
+      "schema": "Branch",
+      "description": "Physical store branches owned by the authenticated merchant."
+    },
+    "/inventory/{itemId}": {
+      "schema": "InventoryItem",
+      "description": "Gold jewelry and bullion inventory items across branches."
+    },
+    "/customers/{customerId}": {
+      "schema": "Customer",
+      "description": "Loyal customers containing owner-isolated PII."
+    },
+    "/priceAlerts/{alertId}": {
+      "schema": "PriceAlert",
+      "description": "Customer gold target price notification rules."
+    },
+    "/transactions/{txId}": {
+      "schema": "GoldTransaction",
+      "description": "Immutable gold sale and buyback financial records."
+    },
+    "/stockTransfers/{transferId}": {
+      "schema": "StockTransfer",
+      "description": "Atomic inter-branch stock movement audit logs."
+    }
+  }
+}

@@ -1,0 +1,422 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Pillar 4.1: Global Safety Net (Default-Deny Catch-All)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Core Primitives
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isValidKarat(k) {
+      return k is string && k.size() <= 8 &&
+        k in ['24K', '23K', '22K', '20K', '18K', '17K', '16K', '9K', '8K'];
+    }
+
+    function isValidCategory(c) {
+      return c is string && c.size() <= 24 &&
+        c in ['cincin', 'kalung', 'gelang', 'anting', 'liontin', 'logam_mulia', 'leburan'];
+    }
+
+    function isOwnedBranch(branchId) {
+      return exists(/databases/$(database)/documents/branches/$(branchId)) &&
+        get(/databases/$(database)/documents/branches/$(branchId)).data.ownerId == request.auth.uid;
+    }
+
+    function isOwnedCustomer(customerId) {
+      return exists(/databases/$(database)/documents/customers/$(customerId)) &&
+        get(/databases/$(database)/documents/customers/$(customerId)).data.ownerId == request.auth.uid;
+    }
+
+    // 1. Store Settings Blueprint
+    function isValidStoreSetting(data) {
+      return data.keys().hasAll([
+          'ownerId', 'storeName', 'npwpStore', 'sellMarginPercent',
+          'buybackSpreadPerGram', 'manualSpot24kOverride', 'receiptFooterNote',
+          'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'ownerId', 'storeName', 'npwpStore', 'sellMarginPercent',
+          'buybackSpreadPerGram', 'manualSpot24kOverride', 'receiptFooterNote',
+          'createdAt', 'updatedAt'
+        ]) &&
+        data.ownerId == request.auth.uid &&
+        isValidId(data.ownerId) &&
+        data.storeName is string && data.storeName.size() >= 1 && data.storeName.size() <= 100 &&
+        data.npwpStore is string && data.npwpStore.size() <= 32 &&
+        data.sellMarginPercent is number && data.sellMarginPercent >= 0 && data.sellMarginPercent <= 50 &&
+        data.buybackSpreadPerGram is number && data.buybackSpreadPerGram >= 0 && data.buybackSpreadPerGram <= 500000 &&
+        data.manualSpot24kOverride is number && data.manualSpot24kOverride >= 0 && data.manualSpot24kOverride <= 50000000 &&
+        data.receiptFooterNote is string && data.receiptFooterNote.size() <= 240 &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    match /storeSettings/{ownerId} {
+      allow get: if isSignedIn() && isValidId(ownerId) && ownerId == request.auth.uid && (resource == null || existing().ownerId == request.auth.uid);
+      allow list: if false;
+      allow create: if isVerified() && isValidId(ownerId) && ownerId == request.auth.uid &&
+        isValidStoreSetting(incoming()) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isVerified() && isValidId(ownerId) && ownerId == request.auth.uid &&
+        isValidStoreSetting(incoming()) &&
+        existing().ownerId == request.auth.uid &&
+        incoming().ownerId == existing().ownerId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time && (
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'storeName', 'npwpStore', 'sellMarginPercent',
+            'buybackSpreadPerGram', 'manualSpot24kOverride', 'receiptFooterNote', 'updatedAt'
+          ])
+        );
+      allow delete: if false;
+    }
+
+    // 2. Branches Blueprint
+    function isValidBranch(data) {
+      return data.keys().hasAll([
+          'ownerId', 'code', 'name', 'city', 'address', 'phone',
+          'managerName', 'monthlyOperationalCost', 'isActive', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'ownerId', 'code', 'name', 'city', 'address', 'phone',
+          'managerName', 'monthlyOperationalCost', 'isActive', 'createdAt', 'updatedAt'
+        ]) &&
+        data.ownerId == request.auth.uid &&
+        isValidId(data.ownerId) &&
+        data.code is string && data.code.size() >= 1 && data.code.size() <= 20 && data.code.matches('^[A-Z0-9\\-]+$') &&
+        data.name is string && data.name.size() >= 1 && data.name.size() <= 100 &&
+        data.city is string && data.city.size() >= 1 && data.city.size() <= 80 &&
+        data.address is string && data.address.size() >= 1 && data.address.size() <= 240 &&
+        data.phone is string && data.phone.size() >= 1 && data.phone.size() <= 30 &&
+        data.managerName is string && data.managerName.size() >= 1 && data.managerName.size() <= 100 &&
+        data.monthlyOperationalCost is number && data.monthlyOperationalCost >= 0 && data.monthlyOperationalCost <= 5000000000 &&
+        data.isActive is bool &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    match /branches/{branchId} {
+      allow get: if isSignedIn() && isValidId(branchId) && resource != null && existing().ownerId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow create: if isVerified() && isValidId(branchId) &&
+        isValidBranch(incoming()) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isVerified() && isValidId(branchId) &&
+        isValidBranch(incoming()) &&
+        existing().ownerId == request.auth.uid &&
+        incoming().ownerId == existing().ownerId &&
+        incoming().code == existing().code &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time && (
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'name', 'city', 'address', 'phone', 'managerName',
+            'monthlyOperationalCost', 'isActive', 'updatedAt'
+          ])
+        );
+      allow delete: if isVerified() && isValidId(branchId) && existing().ownerId == request.auth.uid;
+    }
+
+    // 3. Inventory Blueprint
+    function isValidInventoryItem(data) {
+      return data.keys().hasAll([
+          'ownerId', 'branchId', 'sku', 'name', 'category', 'karat',
+          'purityPercent', 'weightGrams', 'costPerGram', 'makingCharge',
+          'status', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'ownerId', 'branchId', 'sku', 'name', 'category', 'karat',
+          'purityPercent', 'weightGrams', 'costPerGram', 'makingCharge',
+          'status', 'createdAt', 'updatedAt'
+        ]) &&
+        data.ownerId == request.auth.uid &&
+        isValidId(data.ownerId) &&
+        isValidId(data.branchId) &&
+        data.sku is string && data.sku.size() >= 1 && data.sku.size() <= 40 && data.sku.matches('^[A-Z0-9\\-]+$') &&
+        data.name is string && data.name.size() >= 1 && data.name.size() <= 120 &&
+        isValidCategory(data.category) &&
+        isValidKarat(data.karat) &&
+        data.purityPercent is number && data.purityPercent >= 30 && data.purityPercent <= 100 &&
+        data.weightGrams is number && data.weightGrams >= 0.01 && data.weightGrams <= 100000 &&
+        data.costPerGram is number && data.costPerGram >= 1000 && data.costPerGram <= 50000000 &&
+        data.makingCharge is number && data.makingCharge >= 0 && data.makingCharge <= 100000000 &&
+        data.status is string && data.status.size() <= 16 && data.status in ['available', 'sold', 'melting'] &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    match /inventory/{itemId} {
+      allow get: if isSignedIn() && isValidId(itemId) && resource != null && existing().ownerId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow create: if isVerified() && isValidId(itemId) &&
+        isValidInventoryItem(incoming()) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        isOwnedBranch(incoming().branchId);
+      allow update: if isVerified() && isValidId(itemId) &&
+        isValidInventoryItem(incoming()) &&
+        existing().ownerId == request.auth.uid &&
+        existing().status != 'sold' &&
+        incoming().ownerId == existing().ownerId &&
+        incoming().sku == existing().sku &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time && (
+          (incoming().branchId == existing().branchId &&
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'name', 'category', 'karat', 'purityPercent', 'weightGrams',
+              'costPerGram', 'makingCharge', 'status', 'updatedAt'
+            ])) ||
+          (incoming().branchId != existing().branchId &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['branchId', 'updatedAt']) &&
+            isOwnedBranch(incoming().branchId)) ||
+          (incoming().status == 'sold' &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']))
+        );
+      allow delete: if isVerified() && isValidId(itemId) &&
+        existing().ownerId == request.auth.uid &&
+        existing().status != 'sold';
+    }
+
+    // 4. Customers Blueprint (PII Strictly Isolated to Owner)
+    function isValidCustomer(data) {
+      return data.keys().hasAll([
+          'ownerId', 'branchId', 'name', 'phone', 'hasNpwp', 'npwpNumber',
+          'tier', 'totalTransactionsCount', 'totalWeightGrams', 'loyaltyPoints',
+          'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'ownerId', 'branchId', 'name', 'phone', 'hasNpwp', 'npwpNumber',
+          'tier', 'totalTransactionsCount', 'totalWeightGrams', 'loyaltyPoints',
+          'createdAt', 'updatedAt'
+        ]) &&
+        data.ownerId == request.auth.uid &&
+        isValidId(data.ownerId) &&
+        isValidId(data.branchId) &&
+        data.name is string && data.name.size() >= 1 && data.name.size() <= 100 &&
+        data.phone is string && data.phone.size() >= 3 && data.phone.size() <= 30 && data.phone.matches('^[0-9+\\-\\s]+$') &&
+        data.hasNpwp is bool &&
+        data.npwpNumber is string && data.npwpNumber.size() <= 32 &&
+        data.tier is string && data.tier.size() <= 16 && data.tier in ['reguler', 'prioritas', 'vip'] &&
+        data.totalTransactionsCount is number && data.totalTransactionsCount >= 0 && data.totalTransactionsCount <= 1000000 &&
+        data.totalWeightGrams is number && data.totalWeightGrams >= 0 && data.totalWeightGrams <= 10000000 &&
+        data.loyaltyPoints is number && data.loyaltyPoints >= 0 && data.loyaltyPoints <= 100000000 &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    match /customers/{customerId} {
+      allow get: if isSignedIn() && isValidId(customerId) && resource != null && existing().ownerId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow create: if isVerified() && isValidId(customerId) &&
+        isValidCustomer(incoming()) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        isOwnedBranch(incoming().branchId);
+      allow update: if isVerified() && isValidId(customerId) &&
+        isValidCustomer(incoming()) &&
+        existing().ownerId == request.auth.uid &&
+        incoming().ownerId == existing().ownerId &&
+        incoming().branchId == existing().branchId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time && (
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'name', 'phone', 'hasNpwp', 'npwpNumber', 'tier', 'updatedAt'
+          ]) ||
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'tier', 'totalTransactionsCount', 'totalWeightGrams', 'loyaltyPoints', 'updatedAt'
+          ])
+        );
+      allow delete: if isVerified() && isValidId(customerId) && existing().ownerId == request.auth.uid;
+    }
+
+    // 5. Price Alerts Blueprint
+    function isValidPriceAlert(data) {
+      return data.keys().hasAll([
+          'ownerId', 'customerId', 'customerName', 'customerPhone',
+          'karat', 'alertType', 'targetPricePerGram', 'status',
+          'notes', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'ownerId', 'customerId', 'customerName', 'customerPhone',
+          'karat', 'alertType', 'targetPricePerGram', 'status',
+          'notes', 'createdAt', 'updatedAt'
+        ]) &&
+        data.ownerId == request.auth.uid &&
+        isValidId(data.ownerId) &&
+        isValidId(data.customerId) &&
+        data.customerName is string && data.customerName.size() >= 1 && data.customerName.size() <= 100 &&
+        data.customerPhone is string && data.customerPhone.size() >= 3 && data.customerPhone.size() <= 30 && data.customerPhone.matches('^[0-9+\\-\\s]+$') &&
+        isValidKarat(data.karat) &&
+        data.alertType is string && data.alertType.size() <= 16 && data.alertType in ['buy_below', 'sell_above'] &&
+        data.targetPricePerGram is number && data.targetPricePerGram >= 1000 && data.targetPricePerGram <= 50000000 &&
+        data.status is string && data.status.size() <= 16 && data.status in ['active', 'notified', 'cancelled'] &&
+        data.notes is string && data.notes.size() <= 200 &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    match /priceAlerts/{alertId} {
+      allow get: if isSignedIn() && isValidId(alertId) && resource != null && existing().ownerId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow create: if isVerified() && isValidId(alertId) &&
+        isValidPriceAlert(incoming()) &&
+        incoming().status == 'active' &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        isOwnedCustomer(incoming().customerId);
+      allow update: if isVerified() && isValidId(alertId) &&
+        isValidPriceAlert(incoming()) &&
+        existing().ownerId == request.auth.uid &&
+        existing().status != 'cancelled' &&
+        incoming().ownerId == existing().ownerId &&
+        incoming().customerId == existing().customerId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time && (
+          (incoming().status == 'notified' &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt'])) ||
+          (incoming().status == 'active' &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['status', 'targetPricePerGram', 'notes', 'updatedAt'])) ||
+          (incoming().status == 'cancelled' &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']))
+        );
+      allow delete: if isVerified() && isValidId(alertId) && existing().ownerId == request.auth.uid;
+    }
+
+    // 6. Gold Transactions Blueprint (Immutable Financial Ledger)
+    function isValidTransaction(data) {
+      return data.keys().hasAll([
+          'ownerId', 'branchId', 'branchName', 'invoiceNumber', 'txType',
+          'customerId', 'customerName', 'customerHasNpwp', 'inventoryItemId',
+          'sku', 'itemName', 'category', 'karat', 'purityPercent', 'weightGrams',
+          'scaleSource', 'pricePerGram', 'costPerGram', 'makingCharge',
+          'deductionAmount', 'dppAmount', 'ppnAmount', 'pph22Amount',
+          'totalAmount', 'paymentMethod', 'status', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'ownerId', 'branchId', 'branchName', 'invoiceNumber', 'txType',
+          'customerId', 'customerName', 'customerHasNpwp', 'inventoryItemId',
+          'sku', 'itemName', 'category', 'karat', 'purityPercent', 'weightGrams',
+          'scaleSource', 'pricePerGram', 'costPerGram', 'makingCharge',
+          'deductionAmount', 'dppAmount', 'ppnAmount', 'pph22Amount',
+          'totalAmount', 'paymentMethod', 'status', 'createdAt', 'updatedAt'
+        ]) &&
+        data.ownerId == request.auth.uid &&
+        isValidId(data.ownerId) &&
+        isValidId(data.branchId) &&
+        data.branchName is string && data.branchName.size() >= 1 && data.branchName.size() <= 100 &&
+        data.invoiceNumber is string && data.invoiceNumber.size() >= 1 && data.invoiceNumber.size() <= 40 && data.invoiceNumber.matches('^[A-Z0-9\\-]+$') &&
+        data.txType is string && data.txType.size() <= 16 && data.txType in ['sale', 'buyback'] &&
+        data.customerId is string && data.customerId.size() <= 128 &&
+        data.customerName is string && data.customerName.size() >= 1 && data.customerName.size() <= 100 &&
+        data.customerHasNpwp is bool &&
+        data.inventoryItemId is string && data.inventoryItemId.size() <= 128 &&
+        data.sku is string && data.sku.size() >= 1 && data.sku.size() <= 40 && data.sku.matches('^[A-Z0-9\\-]+$') &&
+        data.itemName is string && data.itemName.size() >= 1 && data.itemName.size() <= 120 &&
+        isValidCategory(data.category) &&
+        isValidKarat(data.karat) &&
+        data.purityPercent is number && data.purityPercent >= 30 && data.purityPercent <= 100 &&
+        data.weightGrams is number && data.weightGrams >= 0.01 && data.weightGrams <= 100000 &&
+        data.scaleSource is string && data.scaleSource.size() >= 1 && data.scaleSource.size() <= 60 &&
+        data.pricePerGram is number && data.pricePerGram >= 1000 && data.pricePerGram <= 50000000 &&
+        data.costPerGram is number && data.costPerGram >= 1000 && data.costPerGram <= 50000000 &&
+        data.makingCharge is number && data.makingCharge >= 0 && data.makingCharge <= 100000000 &&
+        data.deductionAmount is number && data.deductionAmount >= 0 && data.deductionAmount <= 100000000 &&
+        data.dppAmount is number && data.dppAmount >= 0 && data.dppAmount <= 50000000000 &&
+        data.ppnAmount is number && data.ppnAmount >= 0 && data.ppnAmount <= 5000000000 &&
+        data.pph22Amount is number && data.pph22Amount >= 0 && data.pph22Amount <= 5000000000 &&
+        data.totalAmount is number && data.totalAmount >= 0 && data.totalAmount <= 55000000000 &&
+        data.paymentMethod is string && data.paymentMethod.size() <= 16 && data.paymentMethod in ['tunai', 'transfer', 'qris', 'debit'] &&
+        data.status is string && data.status.size() <= 16 && data.status in ['completed', 'voided'] &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    match /transactions/{txId} {
+      allow get: if isSignedIn() && isValidId(txId) && resource != null && existing().ownerId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow create: if isVerified() && isValidId(txId) &&
+        isValidTransaction(incoming()) &&
+        incoming().status == 'completed' &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        isOwnedBranch(incoming().branchId);
+      allow update: if isVerified() && isValidId(txId) &&
+        isValidTransaction(incoming()) &&
+        existing().ownerId == request.auth.uid &&
+        existing().status == 'completed' &&
+        incoming().ownerId == existing().ownerId &&
+        incoming().branchId == existing().branchId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time && (
+          incoming().status == 'voided' &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt'])
+        );
+      allow delete: if false;
+    }
+
+    // 7. Stock Transfers Blueprint (Atomic Batch Enforced via getAfter)
+    function isValidStockTransfer(data) {
+      return data.keys().hasAll([
+          'ownerId', 'inventoryItemId', 'sku', 'itemName', 'karat',
+          'weightGrams', 'fromBranchId', 'fromBranchName',
+          'toBranchId', 'toBranchName', 'notes', 'status', 'createdAt'
+        ]) &&
+        data.keys().hasOnly([
+          'ownerId', 'inventoryItemId', 'sku', 'itemName', 'karat',
+          'weightGrams', 'fromBranchId', 'fromBranchName',
+          'toBranchId', 'toBranchName', 'notes', 'status', 'createdAt'
+        ]) &&
+        data.ownerId == request.auth.uid &&
+        isValidId(data.ownerId) &&
+        isValidId(data.inventoryItemId) &&
+        data.sku is string && data.sku.size() >= 1 && data.sku.size() <= 40 && data.sku.matches('^[A-Z0-9\\-]+$') &&
+        data.itemName is string && data.itemName.size() >= 1 && data.itemName.size() <= 120 &&
+        isValidKarat(data.karat) &&
+        data.weightGrams is number && data.weightGrams >= 0.01 && data.weightGrams <= 100000 &&
+        isValidId(data.fromBranchId) &&
+        data.fromBranchName is string && data.fromBranchName.size() >= 1 && data.fromBranchName.size() <= 100 &&
+        isValidId(data.toBranchId) &&
+        data.toBranchName is string && data.toBranchName.size() >= 1 && data.toBranchName.size() <= 100 &&
+        data.fromBranchId != data.toBranchId &&
+        data.notes is string && data.notes.size() <= 200 &&
+        data.status == 'completed' &&
+        data.createdAt is timestamp;
+    }
+
+    match /stockTransfers/{transferId} {
+      allow get: if isSignedIn() && isValidId(transferId) && resource != null && existing().ownerId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow create: if isVerified() && isValidId(transferId) &&
+        isValidStockTransfer(incoming()) &&
+        incoming().createdAt == request.time &&
+        isOwnedBranch(incoming().fromBranchId) &&
+        isOwnedBranch(incoming().toBranchId) &&
+        exists(/databases/$(database)/documents/inventory/$(incoming().inventoryItemId)) &&
+        get(/databases/$(database)/documents/inventory/$(incoming().inventoryItemId)).data.ownerId == request.auth.uid &&
+        getAfter(/databases/$(database)/documents/inventory/$(incoming().inventoryItemId)).data.branchId == incoming().toBranchId;
+      allow update, delete: if false;
+    }
+  }
+}
